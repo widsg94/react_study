@@ -14,7 +14,8 @@ model = AutoModel.from_pretrained('ucaslcl/GOT-OCR2_0', trust_remote_code=True,
                                   use_safetensors=True, pad_token_id=tokenizer.eos_token_id)
 model = model.eval().cuda()
 print("Model is loaded")
-
+recognized_text = model.chat(tokenizer, "test/test_image.jpg", ocr_type='ocr')
+print(f"Example tested for OCR: {recognized_text}")
 app = Flask(__name__)
 
 CORS(app, origins=["http://localhost:3000"])
@@ -62,4 +63,4 @@ def ocr():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=5000, debug=True)
