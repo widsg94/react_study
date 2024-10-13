@@ -14,7 +14,8 @@ from langdetect import detect, LangDetectException  # 추가된 모듈
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
 
-ocr_lock = threading.Lock()
+ocr_lock = threading.Lock()  # Lock to prevent concurrent OCR requests
+is_ocr_locked = False  # Flag to track if OCR is locked
 
 # Initialize PaddleOCR
 ocr = PaddleOCR(use_angle_cls=True, lang='japan')
@@ -71,59 +72,69 @@ def add_padding(base64_string):
 
 @app.route('/api/ocr', methods=['POST'])
 def recognize_text():
+    global is_ocr_locked
+
+    if is_ocr_locked:
+        # Reject the request if OCR is locked
+        return jsonify({"error": "OCR is currently in progress. Please try again later."}), 429
+
     # Acquire the lock to prevent concurrent requests
     with ocr_lock:
-        data = request.get_json()
-        if not data or 'image_data' not in data:
-            return jsonify({"error": "No image data provided"}), 400
+        is_ocr_locked = True
+        try:
+            data = request.get_json()
+            if not data or 'image_data' not in data:
+                return jsonify({"error": "No image data provided"}), 400
 
-        image_data = data.get('image_data')
-        image_data = image_data.split(",")[1]  # Remove the base64 header
-        image_data = add_padding(image_data)  # Fix the base64 padding issue
-        current_image = Image.open(BytesIO(base64.b64decode(image_data)))
+            image_data = data.get('image_data')
+            image_data = image_data.split(",")[1]  # Remove the base64 header
+            image_data = add_padding(image_data)  # Fix the base64 padding issue
+            current_image = Image.open(BytesIO(base64.b64decode(image_data)))
 
-        # Load past image for comparison
-        past_image = load_past_image(PAST_IMAGE_PATH)
+            # Load past image for comparison
+            past_image = load_past_image(PAST_IMAGE_PATH)
 
-        if past_image:
-            similarity = compare_images(current_image, past_image)
-            print(f"Image similarity: {similarity * 100:.2f}%")
+            if past_image:
+                similarity = compare_images(current_image, past_image)
+                print(f"Image similarity: {similarity * 100:.2f}%")
 
-            # If similarity is over 90%, do not conduct OCR, return nothing
-            if similarity > 0.90:
-                print("Skipping OCR due to high similarity with past input.")
-                return jsonify({})  # Return empty response to indicate no new data
+                # If similarity is over 95%, do not conduct OCR, return nothing
+                if similarity > 0.95:
+                    print("Skipping OCR due to high similarity with past input.")
+                    return jsonify({})  # Return empty response to indicate no new data
 
-        # If images are different, save the current image as the new past image
-        save_image(current_image, PAST_IMAGE_PATH)
+            # If images are different, save the current image as the new past image
+            save_image(current_image, PAST_IMAGE_PATH)
 
-        # Perform OCR
-        temp_image_path = "temp_image.png"
-        current_image.save(temp_image_path)
+            # Perform OCR
+            temp_image_path = "temp_image.png"
+            current_image.save(temp_image_path)
 
-        result = ocr.ocr(temp_image_path, cls=True)
-        txts = [elements[1][0] for elements in result[0]]
+            result = ocr.ocr(temp_image_path, cls=True)
+            txts = [elements[1][0] for elements in result[0]]
 
-        recognized_text = ''
-        for txt in txts:
-            try:
-                # Detect language
-                lang = detect(txt)
-                if lang in ['ja', 'zh-cn', 'zh-tw']:  # Filter based on the detected language
-                    recognized_text += txt + '<br>'
-            except LangDetectException:
-                # Handle exception if language detection fails
-                print(f"Language detection failed for text: {txt}")
-                continue
+            recognized_text = ''
+            for txt in txts:
+                try:
+                    # Detect language
+                    lang = detect(txt)
+                    if lang in ['ja', 'zh-cn', 'zh-tw']:  # Filter based on the detected language
+                        recognized_text += txt + '<br>'
+                except LangDetectException:
+                    # Handle exception if language detection fails
+                    print(f"Language detection failed for text: {txt}")
+                    continue
 
-        # Save recognized text for future requests
-        save_recognized_text(recognized_text, PAST_TEXT_PATH)
+            # Save recognized text for future requests
+            save_recognized_text(recognized_text, PAST_TEXT_PATH)
 
-        # Remove the temporary image file after OCR
-        os.remove(temp_image_path)
+            # Remove the temporary image file after OCR
+            os.remove(temp_image_path)
 
-        print(f"Text recognized: {recognized_text}")
-        return jsonify({"text": recognized_text})
+            print(f"Text recognized: {recognized_text}")
+            return jsonify({"text": recognized_text})
+        finally:
+            is_ocr_locked = False  # Release the lock when processing is complete
 
 
 if __name__ == '__main__':
