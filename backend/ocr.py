@@ -89,8 +89,8 @@ def recognize_text():
             similarity = compare_images(current_image, past_image)
             print(f"Image similarity: {similarity * 100:.2f}%")
 
-            # If similarity is over 95%, do not conduct OCR, return nothing
-            if similarity > 0.95:
+            # If similarity is over 90%, do not conduct OCR, return nothing
+            if similarity > 0.90:
                 print("Skipping OCR due to high similarity with past input.")
                 return jsonify({})  # Return empty response to indicate no new data
 

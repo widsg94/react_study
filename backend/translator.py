@@ -19,7 +19,7 @@ translate_lock = threading.Lock()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000", "methods": ["GET", "POST", "OPTIONS"], "allow_headers": ["Content-Type"]}})
 
-@app.route('/api/translate', methods=['POST'])
+@app.route('/api/korean', methods=['POST'])
 def translate():
     with translate_lock:  # Acquire the lock to prevent concurrent requests
         print("Received translation request")  # Debugging output

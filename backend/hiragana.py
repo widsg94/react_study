@@ -12,7 +12,7 @@ tokenizer_obj = dictionary.Dictionary().create()
 mode = tokenizer.Tokenizer.SplitMode.C
 
 # Dictionary to convert Katakana to Hiragana
-katakana_to_hiragana = {
+katakana_to_hiragana_map = {
     'ア': 'あ', 'イ': 'い', 'ウ': 'う', 'エ': 'え', 'オ': 'お',
     'カ': 'か', 'キ': 'き', 'ク': 'く', 'ケ': 'け', 'コ': 'こ',
     'サ': 'さ', 'シ': 'し', 'ス': 'す', 'セ': 'せ', 'ソ': 'そ',
@@ -46,13 +46,13 @@ def katakana_to_hiragana(text):
     hiragana_text = ''
     i = 0
     while i < len(text):
-        if i < len(text) - 1 and text[i:i+2] in katakana_to_hiragana:
+        if i < len(text) - 1 and text[i:i+2] in katakana_to_hiragana_map:
             # Convert 2-character Katakana combinations (e.g., キャ -> きゃ)
-            hiragana_text += katakana_to_hiragana[text[i:i+2]]
+            hiragana_text += katakana_to_hiragana_map[text[i:i+2]]
             i += 2
-        elif text[i] in katakana_to_hiragana:
+        elif text[i] in katakana_to_hiragana_map:
             # Convert single Katakana characters (e.g., ア -> あ)
-            hiragana_text += katakana_to_hiragana[text[i]]
+            hiragana_text += katakana_to_hiragana_map[text[i]]
             i += 1
         else:
             # If no conversion is possible, keep the original character
@@ -75,7 +75,11 @@ def kanji_to_hiragana(text):
         if part.strip():  # If part is not empty
             tokens = tokenizer_obj.tokenize(part, mode)
             katakana_text = ''.join([m.reading_form() for m in tokens])  # Get Katakana reading
-            hiragana_text = katakana_to_hiragana(katakana_text)  # Convert Katakana to Hiragana
+            print(katakana_text)
+            try:
+                hiragana_text = katakana_to_hiragana(katakana_text)  # Convert Katakana to Hiragana
+            except Exception as e:
+                print(e)
             hiragana_parts.append(hiragana_text)
         else:
             hiragana_parts.append(part)
