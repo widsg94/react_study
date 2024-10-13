@@ -9,6 +9,7 @@ import threading
 from skimage.metrics import structural_similarity as ssim
 import numpy as np
 import cv2
+from langdetect import detect, LangDetectException  # 추가된 모듈
 
 app = Flask(__name__)
 CORS(app, origins=["http://localhost:3000"])
@@ -105,7 +106,15 @@ def recognize_text():
 
         recognized_text = ''
         for txt in txts:
-            recognized_text += txt + '\n'
+            try:
+                # Detect language
+                lang = detect(txt)
+                if lang in ['ja', 'zh-cn', 'zh-tw']:  # Filter based on the detected language
+                    recognized_text += txt + '<br>'
+            except LangDetectException:
+                # Handle exception if language detection fails
+                print(f"Language detection failed for text: {txt}")
+                continue
 
         # Save recognized text for future requests
         save_recognized_text(recognized_text, PAST_TEXT_PATH)
