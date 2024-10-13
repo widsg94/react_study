@@ -28,7 +28,7 @@ def translate():
         data = request.get_json()
         print(f"Incoming data: {data}")  # Log the incoming request data
 
-        if not data or 'sentence' not in data:
+        if not data or 'sentence' not in data or not data['sentence'].strip():
             return jsonify({"error": "No text provided"}), 400
 
         japanese_text = data['sentence']
@@ -54,7 +54,7 @@ def korean_translate():
         data = request.get_json()
         print(f"Incoming data for Korean translation: {data}")  # Log the incoming request data
 
-        if not data or 'sentence' not in data:
+        if not data or 'sentence' not in data or not data['sentence'].strip():
             return jsonify({"error": "No text provided"}), 400
 
         japanese_text = data['sentence']
@@ -64,7 +64,7 @@ def korean_translate():
         embeddings = src_tokenizer(japanese_text, return_attention_mask=False, return_token_type_ids=False, return_tensors='pt')
         output = model.generate(**embeddings, max_length=500)[0, 1:-1]
         korean_translation = trg_tokenizer.decode(output.cpu())
-
+        print(f"Translated Korean text: {korean_translation}")
         # Return the translated text
         return jsonify({"translated_text": korean_translation})
 
